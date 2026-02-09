@@ -90,7 +90,7 @@ int Main(int argc, char** argv)
 	P4API::P4PORT = Arguments::GetSingleton()->GetPort();
 	P4API::P4USER = Arguments::GetSingleton()->GetUsername();
 
-	const Error& serviceConnectionResult = P4API().TestConnection(5).GetError();
+	const Error serviceConnectionResult = P4API().TestConnection(5).GetError();
 	bool serverAvailable = serviceConnectionResult.IsError() == 0;
 	if (serverAvailable)
 	{
