@@ -5,6 +5,7 @@
  * For full license text, see the LICENSE.txt file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 #include "file_data.h"
+#include "git_api.h"
 
 FileDataStore::FileDataStore()
     : actionCategory(FileAction::FileAdd)
@@ -53,7 +54,7 @@ void FileData::SetFromDepotFile(const std::string& fromDepotFile, const std::str
 	}
 }
 
-void FileData::MoveContentsOnceFrom(const std::vector<char>& contents)
+void FileData::MoveContentsOnceFrom(git_oid contents)
 {
 	// TODO double-check the thread logic here.  It needs to be thread safe.
 
@@ -64,7 +65,7 @@ void FileData::MoveContentsOnceFrom(const std::vector<char>& contents)
 		return;
 	}
 	m_data->isContentsSet = true;
-	m_data->contents = std::move(contents);
+	m_data->contents = contents;
 	m_data->isContentsPendingDownload = false;
 }
 
@@ -138,7 +139,6 @@ void FileDataStore::Clear()
 	type.clear();
 	fromDepotFile.clear();
 	fromRevision.clear();
-	contents.clear();
 	relativePath.clear();
 }
 

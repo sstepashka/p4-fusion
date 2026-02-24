@@ -6,6 +6,7 @@
  */
 #include "change_list.h"
 
+#include "git_api.h"
 #include "p4_api.h"
 #include "describe_result.h"
 #include "filelog_result.h"
@@ -58,11 +59,11 @@ void ChangeList::PrepareDownload(const BranchSet& branchSet)
 	    });
 }
 
-void ChangeList::StartDownload(const int& printBatch)
+void ChangeList::StartDownload(const int& printBatch, GitAPI* git_api)
 {
 	ChangeList& cl = *this;
 
-	ThreadPool::GetSingleton()->AddJob([&cl, printBatch](P4API* p4)
+	ThreadPool::GetSingleton()->AddJob([&cl, printBatch, git_api](P4API* p4)
 	    {
 		    // Wait for describe to finish, if it is still running
 		    {
@@ -92,7 +93,7 @@ void ChangeList::StartDownload(const int& printBatch)
 						    // Clear the batches if it fits
 						    if (printBatchFiles->size() == printBatch)
 						    {
-							    cl.Flush(printBatchFiles, printBatchFileData);
+							    cl.Flush(printBatchFiles, printBatchFileData, git_api);
 
 							    // We let go of the refs held by us and create new ones to queue the next batch
 							    printBatchFiles = std::make_shared<std::vector<std::string>>();
@@ -106,14 +107,14 @@ void ChangeList::StartDownload(const int& printBatch)
 
 		    // Flush any remaining files that were smaller in number than the total batch size.
 		    // Additionally, signal the batch processing end.
-		    cl.Flush(printBatchFiles, printBatchFileData);
+		    cl.Flush(printBatchFiles, printBatchFileData, git_api);
 	    });
 }
 
-void ChangeList::Flush(std::shared_ptr<std::vector<std::string>> printBatchFiles, std::shared_ptr<std::vector<FileData*>> printBatchFileData)
+void ChangeList::Flush(std::shared_ptr<std::vector<std::string>> printBatchFiles, std::shared_ptr<std::vector<FileData*>> printBatchFileData, GitAPI* git_api)
 {
 	// Share ownership of this batch with the thread job
-	ThreadPool::GetSingleton()->AddJob([this, printBatchFiles, printBatchFileData](P4API* p4)
+	ThreadPool::GetSingleton()->AddJob([this, printBatchFiles, printBatchFileData, git_api](P4API* p4)
 	    {
 		    // Only perform the batch processing when there are files to process.
 		    if (!printBatchFileData->empty())
@@ -122,7 +123,8 @@ void ChangeList::Flush(std::shared_ptr<std::vector<std::string>> printBatchFiles
 
 			    for (int i = 0; i < printBatchFiles->size(); i++)
 			    {
-				    printBatchFileData->at(i)->MoveContentsOnceFrom(printData->GetPrintData().at(i).contents);
+                    git_oid contents = git_api->CreateBlob(printData->GetPrintData().at(i).contents);
+				    printBatchFileData->at(i)->MoveContentsOnceFrom(contents);
 			    }
 		    }
 

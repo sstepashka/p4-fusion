@@ -23,6 +23,8 @@ class GitAPI
 
 	std::string m_CurrentBranch = "";
 
+    std::recursive_mutex m_;
+
 public:
 	GitAPI(bool fsyncEnable);
 	~GitAPI();
@@ -38,7 +40,7 @@ public:
 
 	void CreateIndex();
 	void SetActiveBranch(const std::string& branchName);
-	void AddFileToIndex(const std::string& relativePath, const std::vector<char>& contents, const bool plusx);
+    void AddFileToIndex(const std::string& relativePath, git_oid contents, const bool plusx);
 	void RemoveFileFromIndex(const std::string& relativePath);
 
 	std::string Commit(

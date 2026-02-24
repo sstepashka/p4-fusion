@@ -10,6 +10,7 @@
 #include <cstdlib>
 
 #include "git2.h"
+#include "git2/index.h"
 #include "git2/sys/repository.h"
 #include "minitrace.h"
 #include "utils/std_helpers.h"
@@ -57,6 +58,7 @@ GitAPI::~GitAPI()
 
 bool GitAPI::IsRepositoryClonedFrom(const std::string& depotPath)
 {
+    const std::lock_guard<std::recursive_mutex> guard{m_};
 	git_oid oid;
 	GIT2(git_reference_name_to_id(&oid, m_Repo, "HEAD"));
 
@@ -75,11 +77,13 @@ bool GitAPI::IsRepositoryClonedFrom(const std::string& depotPath)
 
 void GitAPI::OpenRepository(const std::string& repoPath)
 {
+    const std::lock_guard<std::recursive_mutex> guard{m_};
 	GIT2(git_repository_open(&m_Repo, repoPath.c_str()));
 }
 
 bool GitAPI::InitializeRepository(const std::string& srcPath)
 {
+    const std::lock_guard<std::recursive_mutex> guard{m_};
 	GIT2(git_repository_init(&m_Repo, srcPath.c_str(), true));
 	SUCCESS("Initialized Git repository at " << srcPath);
 
@@ -88,6 +92,7 @@ bool GitAPI::InitializeRepository(const std::string& srcPath)
 
 bool GitAPI::IsHEADExists()
 {
+    const std::lock_guard<std::recursive_mutex> guard{m_};
 	git_oid oid;
 	int errorCode = git_reference_name_to_id(&oid, m_Repo, "HEAD");
 	if (errorCode && errorCode != GIT_ENOTFOUND)
@@ -99,6 +104,7 @@ bool GitAPI::IsHEADExists()
 
 void GitAPI::SetActiveBranch(const std::string& branchName)
 {
+    const std::lock_guard<std::recursive_mutex> guard{m_};
 	if (branchName == m_CurrentBranch)
 	{
 		return;
@@ -147,6 +153,7 @@ void GitAPI::SetActiveBranch(const std::string& branchName)
 
 git_oid GitAPI::CreateBlob(const std::vector<char>& data)
 {
+    const std::lock_guard<std::recursive_mutex> guard{m_};
 	git_oid oid;
 	GIT2(git_blob_create_from_buffer(&oid, m_Repo, data.data(), data.size()));
 	return oid;
@@ -154,6 +161,7 @@ git_oid GitAPI::CreateBlob(const std::vector<char>& data)
 
 std::string GitAPI::DetectLatestCL()
 {
+    const std::lock_guard<std::recursive_mutex> guard{m_};
 	git_oid oid;
 	GIT2(git_reference_name_to_id(&oid, m_Repo, "HEAD"));
 
@@ -175,6 +183,7 @@ std::string GitAPI::DetectLatestCL()
 
 void GitAPI::CreateIndex()
 {
+    const std::lock_guard<std::recursive_mutex> guard{m_};
 	MTR_SCOPE("Git", __func__);
 
 	GIT2(git_repository_index(&m_Index, m_Repo));
@@ -234,11 +243,12 @@ void GitAPI::CreateIndex()
 	}
 }
 
-void GitAPI::AddFileToIndex(const std::string& relativePath, const std::vector<char>& contents, const bool plusx)
-{
+void GitAPI::AddFileToIndex(const std::string& relativePath, git_oid contents, const bool plusx) {
+    const std::lock_guard<std::recursive_mutex> guard{m_};
 	MTR_SCOPE("Git", __func__);
 
 	git_index_entry entry = {};
+    entry.id = contents;
 	entry.mode = GIT_FILEMODE_BLOB;
 	if (plusx)
 	{
@@ -246,12 +256,12 @@ void GitAPI::AddFileToIndex(const std::string& relativePath, const std::vector<c
 	}
 
 	entry.path = relativePath.c_str();
-
-	GIT2(git_index_add_from_buffer(m_Index, &entry, contents.data(), contents.size()));
+    GIT2(git_index_add(m_Index, &entry));
 }
 
 void GitAPI::RemoveFileFromIndex(const std::string& relativePath)
 {
+    const std::lock_guard<std::recursive_mutex> guard{m_};
 	MTR_SCOPE("Git", __func__);
 
 	GIT2(git_index_remove_bypath(m_Index, relativePath.c_str()));
@@ -267,6 +277,7 @@ std::string GitAPI::Commit(
     const int64_t& timestamp,
     const std::string& mergeFromStream)
 {
+    const std::lock_guard<std::recursive_mutex> guard{m_};
 	MTR_SCOPE("Git", __func__);
 
 	git_oid commitTreeID;
@@ -336,6 +347,7 @@ std::string GitAPI::Commit(
 
 void GitAPI::CloseIndex()
 {
+    const std::lock_guard<std::recursive_mutex> guard{m_};
 	GIT2(git_index_write(m_Index));
 	git_index_free(m_Index);
 }

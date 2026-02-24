@@ -9,7 +9,9 @@
 #include <memory>
 #include <atomic>
 #include "common.h"
+#include "git_api.h"
 #include "utils/std_helpers.h"
+#include "git2/oid.h"
 
 #define FAKE_INTEGRATION_DELETE_ACTION_NAME "FAKE merge delete"
 
@@ -47,7 +49,8 @@ struct FileDataStore
 	// print values
 	//   the "is*" values here are intended to put the
 	//   breaks on possible multi-threaded downloads.
-	std::vector<char> contents;
+	// std::vector<char> contents;
+    git_oid contents;
 	std::atomic<bool> isContentsSet;
 	std::atomic<bool> isContentsPendingDownload;
 
@@ -80,7 +83,7 @@ public:
 	void SetFakeIntegrationDeleteAction() { m_data->SetAction(FAKE_INTEGRATION_DELETE_ACTION_NAME); };
 
 	// moves the argument's data into this file data structure.
-	void MoveContentsOnceFrom(const std::vector<char>& contents);
+	void MoveContentsOnceFrom(git_oid contents);
 	void SetPendingDownload();
 	bool IsDownloadNeeded() const { return !m_data->isContentsSet && !m_data->isContentsPendingDownload; };
 	bool IsReady() const { return m_data->isContentsSet; }
@@ -89,7 +92,7 @@ public:
 	const std::string& GetRevision() const { return m_data->revision; };
 	const FileAction GetAction() const { return m_data->actionCategory; };
 	const std::string& GetRelativePath() const { return m_data->relativePath; };
-	const std::vector<char>& GetContents() const { return m_data->contents; };
+    git_oid GetContents() const { return m_data->contents; };
 	bool IsDeleted() const { return m_data->isDeleted; };
 	bool IsIntegrated() const { return m_data->isIntegrated; };
 	std::string& GetFromDepotFile() const { return m_data->fromDepotFile; };

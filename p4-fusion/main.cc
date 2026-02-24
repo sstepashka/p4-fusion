@@ -111,7 +111,7 @@ int Main(int argc, char** argv)
 
 	PRINT("Updated client workspace view " << P4API::ClientSpec.client << " with " << P4API::ClientSpec.mapping.size() << " mappings");
 
-	P4API p4;
+	P4API p4{};
 
 	if (!p4.IsDepotPathValid(depotPath))
 	{
@@ -334,7 +334,7 @@ int Main(int argc, char** argv)
 		ChangeList& cl = changes.at(currentCL);
 
 		// Start running `p4 print` on changed files when the describe is finished
-		cl.StartDownload(printBatch);
+		cl.StartDownload(printBatch, &git);
 		startupDownloadsCount++;
 	}
 
@@ -448,7 +448,7 @@ int Main(int argc, char** argv)
 			lastDownloadedCL++;
 			ChangeList& downloadCL = changes.at(lastDownloadedCL);
 			downloadCL.PrepareDownload(branchSet);
-			downloadCL.StartDownload(printBatch);
+			downloadCL.StartDownload(printBatch, &git);
 		}
 
 		// Occasionally flush the profiling data

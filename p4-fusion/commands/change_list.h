@@ -13,6 +13,7 @@
 
 #include "common.h"
 #include "../branch_set.h"
+#include "git_api.h"
 
 struct ChangeList
 {
@@ -30,6 +31,8 @@ struct ChangeList
 	int64_t timestamp = 0;
 	std::unique_ptr<ChangedFileGroups> changedFileGroups = ChangedFileGroups::Empty();
 
+    GitAPI* git_api =nullptr;
+
 	std::unique_ptr<std::condition_variable> stateCV;
 	std::unique_ptr<std::mutex> stateMutex;
 	int filesDownloaded;
@@ -45,8 +48,8 @@ struct ChangeList
 	~ChangeList() = default;
 
 	void PrepareDownload(const BranchSet& branchSet);
-	void StartDownload(const int& printBatch);
-	void Flush(std::shared_ptr<std::vector<std::string>> printBatchFiles, std::shared_ptr<std::vector<FileData*>> printBatchFileData);
+	void StartDownload(const int& printBatch, GitAPI* git_api);
+	void Flush(std::shared_ptr<std::vector<std::string>> printBatchFiles, std::shared_ptr<std::vector<FileData*>> printBatchFileData, GitAPI* git_api);
 	void WaitForDownload();
 	void Clear();
 
