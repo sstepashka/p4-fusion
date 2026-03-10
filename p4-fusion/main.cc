@@ -505,6 +505,8 @@ int main(int argc, char** argv)
 	catch (const std::exception& e)
 	{
 		ERR("Exception occurred: " << typeid(e).name() << ": " << e.what());
+		ThreadPool::GetSingleton()->ShutDown();
+		P4API::ShutdownLibraries();
 		return 1;
 	}
 

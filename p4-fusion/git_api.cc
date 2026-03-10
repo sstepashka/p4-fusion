@@ -15,17 +15,67 @@
 #include "minitrace.h"
 #include "utils/std_helpers.h"
 
-#define GIT2(x)                                                                \
-	do                                                                         \
-	{                                                                          \
-		int error = x;                                                         \
-		if (error < 0)                                                         \
-		{                                                                      \
-			const git_error* e = git_error_last();                             \
-			ERR("GitAPI: " << error << ":" << e->klass << ": " << e->message); \
-			exit(error);                                                       \
-		}                                                                      \
-	} while (false)
+namespace {
+void git2(int x, const std::string& func, const std::string& file, int line) {
+	int error = x;
+	if (error < 0)
+	{
+		const git_error* e = git_error_last();
+		std::cerr << Log::ColorRed << "[ ERROR @ " << file << ":" << func << ":" << line << " ]\n";
+		std::cerr << "  Error code: " << error << "\n";
+		if (e) {
+			std::cerr << "  Error class: " << e->klass << " (";
+			switch (e->klass) {
+				case 0: std::cerr << "GIT_ERROR_NONE"; break;
+				case 1: std::cerr << "GIT_ERROR_NOMEMORY"; break;
+				case 2: std::cerr << "GIT_ERROR_OS"; break;
+				case 3: std::cerr << "GIT_ERROR_INVALID"; break;
+				case 4: std::cerr << "GIT_ERROR_REFERENCE"; break;
+				case 5: std::cerr << "GIT_ERROR_ZLIB"; break;
+				case 6: std::cerr << "GIT_ERROR_REPOSITORY"; break;
+				case 7: std::cerr << "GIT_ERROR_CONFIG"; break;
+				case 8: std::cerr << "GIT_ERROR_REGEX"; break;
+				case 9: std::cerr << "GIT_ERROR_ODB"; break;
+				case 10: std::cerr << "GIT_ERROR_INDEX"; break;
+				case 11: std::cerr << "GIT_ERROR_OBJECT"; break;
+				case 12: std::cerr << "GIT_ERROR_NET"; break;
+				case 13: std::cerr << "GIT_ERROR_TAG"; break;
+				case 14: std::cerr << "GIT_ERROR_TREE"; break;
+				case 15: std::cerr << "GIT_ERROR_INDEXER"; break;
+				case 16: std::cerr << "GIT_ERROR_SSL"; break;
+				case 17: std::cerr << "GIT_ERROR_SUBMODULE"; break;
+				case 18: std::cerr << "GIT_ERROR_THREAD"; break;
+				case 19: std::cerr << "GIT_ERROR_STASH"; break;
+				case 20: std::cerr << "GIT_ERROR_CHECKOUT"; break;
+				case 21: std::cerr << "GIT_ERROR_FETCHHEAD"; break;
+				case 22: std::cerr << "GIT_ERROR_MERGE"; break;
+				case 23: std::cerr << "GIT_ERROR_SSH"; break;
+				case 24: std::cerr << "GIT_ERROR_FILTER"; break;
+				case 25: std::cerr << "GIT_ERROR_REVERT"; break;
+				case 26: std::cerr << "GIT_ERROR_CALLBACK"; break;
+				case 27: std::cerr << "GIT_ERROR_CHERRYPICK"; break;
+				case 28: std::cerr << "GIT_ERROR_DESCRIBE"; break;
+				case 29: std::cerr << "GIT_ERROR_REBASE"; break;
+				case 30: std::cerr << "GIT_ERROR_FILESYSTEM"; break;
+				case 31: std::cerr << "GIT_ERROR_PATCH"; break;
+				case 32: std::cerr << "GIT_ERROR_WORKTREE"; break;
+				case 33: std::cerr << "GIT_ERROR_SHA1"; break;
+				case 34: std::cerr << "GIT_ERROR_HTTP"; break;
+				default: std::cerr << "UNKNOWN"; break;
+			}
+			std::cerr << ")\n";
+			std::cerr << "  Error message: " << e->message << "\n";
+		} else {
+			std::cerr << "  No git_error_last() available\n";
+		}
+		std::cerr << Log::ColorNormal;
+        std::cerr << std::endl;
+		throw std::runtime_error("libgit2 error: " + std::string(e ? e->message : "unknown error"));
+	}
+}
+}
+
+#define GIT2(x) git2(x, __func__, __FILE__, __LINE__)
 
 GitAPI::GitAPI(bool fsyncEnable)
 {
@@ -279,6 +329,43 @@ std::string GitAPI::Commit(
 {
     const std::lock_guard<std::recursive_mutex> guard{m_};
 	MTR_SCOPE("Git", __func__);
+
+	// Debug: log all index entries before writing tree
+	size_t entryCount = git_index_entrycount(m_Index);
+	std::cerr << "Index contains " << entryCount << " entries before writing tree\n";
+	for (size_t i = 0; i < entryCount; i++) {
+		const git_index_entry* entry = git_index_get_byindex(m_Index, i);
+		if (entry) {
+			std::string path = entry->path;
+			std::cerr << "  [" << i << "] path='" << path << "' mode=" << entry->mode << "\n";
+			// Check for invalid characters
+			if (path.empty()) {
+				std::cerr << "    WARNING: Empty path!\n";
+			}
+			if (path.find("//") != std::string::npos) {
+				std::cerr << "    WARNING: Double slashes in path!\n";
+			}
+			if (path[0] == '/') {
+				std::cerr << "    WARNING: Path starts with slash!\n";
+			}
+			if (path.back() == '/') {
+				std::cerr << "    WARNING: Path ends with slash!\n";
+			}
+			if (path.find('\0') != std::string::npos) {
+				std::cerr << "    WARNING: Null byte in path!\n";
+			}
+			// Check for invalid path components
+			size_t pos = 0;
+			while ((pos = path.find('/', pos)) != std::string::npos) {
+				if (pos > 0 && path.substr(pos - 1, 1) == ".") {
+					if (pos == 1 || (pos > 1 && path.substr(pos - 2, 2) == "/.")) {
+						std::cerr << "    WARNING: Path contains '/./' or starts with './'\n";
+					}
+				}
+				pos++;
+			}
+		}
+	}
 
 	git_oid commitTreeID;
 	GIT2(git_index_write_tree_to(&commitTreeID, m_Index, m_Repo));
