@@ -15,8 +15,8 @@
 
 ThreadPool* ThreadPool::GetSingleton()
 {
-	static ThreadPool singleton;
-	return &singleton;
+	static ThreadPool* singleton = new ThreadPool();
+	return singleton;
 }
 
 void ThreadPool::AddJob(Job function)

@@ -98,6 +98,8 @@ GitAPI::GitAPI(bool fsyncEnable)
 
 GitAPI::~GitAPI()
 {
+    const std::lock_guard<std::recursive_mutex> guard{m_};
+    
 	if (m_Repo)
 	{
 		git_repository_free(m_Repo);
