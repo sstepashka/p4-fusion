@@ -295,6 +295,36 @@ void GitAPI::CreateIndex()
 	}
 }
 
+namespace {
+std::string Canonicalize(const std::string& path) {
+    std::string result;
+    result.reserve(path.size());
+
+    bool lastWasSlash = false;
+    for (unsigned char ch : path) {
+        // Handle double slashes - collapse to single slash
+        if (ch == '/') {
+            if (!lastWasSlash) {
+                result += ch;
+                lastWasSlash = true;
+            }
+            // Skip additional slashes
+        }
+        // Replace C0 control characters (0x00-0x1F), DEL (0x7F), and C1 controls (0x80-0x9F) with underscores
+        else if (ch <= 0x1F || ch == 0x7F || (ch >= 0x80 && ch <= 0x9F)) {
+            result += '_';
+            lastWasSlash = false;
+        }
+        else {
+            result += ch;
+            lastWasSlash = false;
+        }
+    }
+
+    return result;
+}
+}
+
 void GitAPI::AddFileToIndex(const std::string& relativePath, git_oid contents, const bool plusx) {
     const std::lock_guard<std::recursive_mutex> guard{m_};
 	MTR_SCOPE("Git", __func__);
@@ -307,7 +337,8 @@ void GitAPI::AddFileToIndex(const std::string& relativePath, git_oid contents, c
 		entry.mode = GIT_FILEMODE_BLOB_EXECUTABLE; // 0100755
 	}
 
-	entry.path = relativePath.c_str();
+    std::string canonicalized = Canonicalize(relativePath);
+	entry.path = canonicalized.c_str();
     GIT2(git_index_add(m_Index, &entry));
 }
 
@@ -332,45 +363,47 @@ std::string GitAPI::Commit(
     const std::lock_guard<std::recursive_mutex> guard{m_};
 	MTR_SCOPE("Git", __func__);
 
-	// Debug: log all index entries before writing tree
-	size_t entryCount = git_index_entrycount(m_Index);
-	std::cerr << "Index contains " << entryCount << " entries before writing tree\n";
-	for (size_t i = 0; i < entryCount; i++) {
-		const git_index_entry* entry = git_index_get_byindex(m_Index, i);
-		if (entry) {
-			std::string path = entry->path;
-			std::cerr << "  [" << i << "] path='" << path << "' mode=" << entry->mode << "\n";
-			// Check for invalid characters
-			if (path.empty()) {
-				std::cerr << "    WARNING: Empty path!\n";
-			}
-			if (path.find("//") != std::string::npos) {
-				std::cerr << "    WARNING: Double slashes in path!\n";
-			}
-			if (path[0] == '/') {
-				std::cerr << "    WARNING: Path starts with slash!\n";
-			}
-			if (path.back() == '/') {
-				std::cerr << "    WARNING: Path ends with slash!\n";
-			}
-			if (path.find('\0') != std::string::npos) {
-				std::cerr << "    WARNING: Null byte in path!\n";
-			}
-			// Check for invalid path components
-			size_t pos = 0;
-			while ((pos = path.find('/', pos)) != std::string::npos) {
-				if (pos > 0 && path.substr(pos - 1, 1) == ".") {
-					if (pos == 1 || (pos > 1 && path.substr(pos - 2, 2) == "/.")) {
-						std::cerr << "    WARNING: Path contains '/./' or starts with './'\n";
-					}
-				}
-				pos++;
-			}
-		}
-	}
-
 	git_oid commitTreeID;
-	GIT2(git_index_write_tree_to(&commitTreeID, m_Index, m_Repo));
+    int result = git_index_write_tree_to(&commitTreeID, m_Index, m_Repo);
+    if (result < 0) {
+        // Debug: log all index entries before writing tree
+	    size_t entryCount = git_index_entrycount(m_Index);
+	    std::cerr << "Index contains " << entryCount << " entries before writing tree\n";
+	    for (size_t i = 0; i < entryCount; i++) {
+		    const git_index_entry* entry = git_index_get_byindex(m_Index, i);
+		    if (entry) {
+			    std::string path = entry->path;
+			    std::cerr << "  [" << i << "] path='" << path << "' mode=" << entry->mode << "\n";
+			    // Check for invalid characters
+			    if (path.empty()) {
+				    std::cerr << "    WARNING: Empty path!\n";
+			    }
+			    if (path.find("//") != std::string::npos) {
+				    std::cerr << "    WARNING: Double slashes in path!\n";
+			    }
+			    if (path[0] == '/') {
+				    std::cerr << "    WARNING: Path starts with slash!\n";
+			    }
+			    if (path.back() == '/') {
+				    std::cerr << "    WARNING: Path ends with slash!\n";
+			    }
+			    if (path.find('\0') != std::string::npos) {
+				    std::cerr << "    WARNING: Null byte in path!\n";
+			    }
+			    // Check for invalid path components
+			    size_t pos = 0;
+			    while ((pos = path.find('/', pos)) != std::string::npos) {
+				    if (pos > 0 && path.substr(pos - 1, 1) == ".") {
+					    if (pos == 1 || (pos > 1 && path.substr(pos - 2, 2) == "/.")) {
+						    std::cerr << "    WARNING: Path contains '/./' or starts with './'\n";
+					    }
+				    }
+				    pos++;
+			    }
+		    }
+	    }
+    }
+	GIT2(result);
 
 	git_tree* commitTree = nullptr;
 	GIT2(git_tree_lookup(&commitTree, m_Repo, &commitTreeID));
