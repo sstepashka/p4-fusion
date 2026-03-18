@@ -83,15 +83,12 @@ int Main(int argc, char** argv)
 	{
 		return 1;
 	}
-	// Set the signal here because it gets reset after P4API library is initialized
-	std::signal(SIGINT, SignalHandler);
-	std::signal(SIGTERM, SignalHandler);
 
 	P4API::P4PORT = Arguments::GetSingleton()->GetPort();
 	P4API::P4USER = Arguments::GetSingleton()->GetUsername();
 
-	const Error serviceConnectionResult = P4API().TestConnection(5)->GetError();
-	bool serverAvailable = serviceConnectionResult.IsError() == 0;
+	const auto serviceConnectionResult = P4API().TestConnection(5);
+	bool serverAvailable = serviceConnectionResult->IsError() == 0;
 	if (serverAvailable)
 	{
 		SUCCESS("Perforce server is available");

@@ -109,7 +109,7 @@ inline std::unique_ptr<T> P4API::RunEx(const char* command, const std::vector<st
 	m_ClientAPI.Run(command, clientUser.get());
 
 	int retries = commandRetries;
-	while (m_ClientAPI.Dropped() || clientUser->GetError().IsError())
+	while (m_ClientAPI.Dropped() || clientUser->IsError())
 	{
 		if (retries == 0)
 		{
@@ -138,7 +138,7 @@ inline std::unique_ptr<T> P4API::RunEx(const char* command, const std::vector<st
 		retries--;
 	}
 
-	if (m_ClientAPI.Dropped() || clientUser->GetError().IsFatal())
+	if (m_ClientAPI.Dropped() || clientUser->IsFatal())
 	{
 		ERR("Exiting due to receiving errors even after retrying " << CommandRetries << " times");
 		Deinitialize();

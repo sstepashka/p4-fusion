@@ -11,5 +11,6 @@ void Result::HandleError(Error* e)
 	StrBuf str;
 	e->Fmt(&str);
 	ERR("Received error: " << e->FmtSeverity() << " " << str.Text());
-	m_Error = *e;
+    m_IsError = e->IsError();
+    m_IsFatal = e->IsFatal();
 }

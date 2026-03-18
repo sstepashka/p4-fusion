@@ -8,16 +8,25 @@
 
 #include "common.h"
 
+#include <memory>
+
 class Result : public ClientUser
 {
-	Error m_Error;
+	bool m_IsError;
+    bool m_IsFatal;
 
 public:
 	Result() = default;
 
 	void HandleError(Error* e) override;
 
-	const Error& GetError() const { return m_Error; }
+    bool IsError() const {
+        return m_IsError;
+    }
+
+    bool IsFatal() const {
+        return m_IsFatal;
+    }
 
 	Result(const Result&) = delete;
 	Result& operator=(const Result&) = delete;
