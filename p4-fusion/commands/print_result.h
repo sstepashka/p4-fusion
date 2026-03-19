@@ -28,4 +28,6 @@ public:
 	void OutputStat(StrDict* varList) override;
 	void OutputText(const char* data, int length) override;
 	void OutputBinary(const char* data, int length) override;
+
+    void HandleError(Error* e) override;
 };

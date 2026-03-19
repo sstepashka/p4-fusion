@@ -121,6 +121,11 @@ void ChangeList::Flush(std::shared_ptr<std::vector<std::string>> printBatchFiles
 		    {
 			    std::unique_ptr<PrintResult> printData = p4->PrintFiles(*printBatchFiles);
 
+                if (printData->GetPrintData().size() != printBatchFiles->size()) {
+                    ERR("The number of printed files doesn't match.");
+                    exit(1);
+                } 
+
 			    for (int i = 0; i < printBatchFiles->size(); i++)
 			    {
                     git_oid contents = git_api->CreateBlob(printData->GetPrintData().at(i).contents);
