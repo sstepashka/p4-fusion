@@ -11,6 +11,7 @@
 #include <p4/errornum.h>
 #include <p4/msgdm.h>
 #include <p4/msglbr.h>
+#include <p4/msgsupp.h>
 
 void PrintResult::OutputStat(StrDict* varList)
 {
@@ -24,7 +25,7 @@ void PrintResult::OutputText(const char* data, int length)
 }
 
 void PrintResult::HandleError(Error* e) {
-    if (e->CheckIds(MsgLbr::LbrOpenFail)) {
+    if (e->CheckIds(MsgLbr::LbrOpenFail) || e->CheckIds(MsgSupp::MagicHeader)) {
         StrBuf str;
 	    e->Fmt(&str);
         char* text = str.Text();
