@@ -7,6 +7,7 @@
 #include "print_result.h"
 
 #include <iostream>
+#include <cstring>
 
 #include <p4/errornum.h>
 #include <p4/msgdm.h>
