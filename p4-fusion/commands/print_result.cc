@@ -14,6 +14,14 @@
 #include <p4/msglbr.h>
 #include <p4/msgsupp.h>
 
+namespace {
+bool IgnoreError(const Error& e) {
+    return e.CheckIds(MsgLbr::LbrOpenFail) ||
+           e.CheckIds(MsgSupp::MagicHeader) ||
+           e.CheckIds(MsgSupp::Inflate);
+}
+}
+
 void PrintResult::OutputStat(StrDict* varList)
 {
 	m_Data.push_back(PrintData {});
@@ -26,7 +34,7 @@ void PrintResult::OutputText(const char* data, int length)
 }
 
 void PrintResult::HandleError(Error* e) {
-    if (e->CheckIds(MsgLbr::LbrOpenFail) || e->CheckIds(MsgSupp::MagicHeader)) {
+    if (IgnoreError(e)) {
         StrBuf str;
 	    e->Fmt(&str);
         char* text = str.Text();
