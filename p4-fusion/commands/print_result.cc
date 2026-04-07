@@ -34,7 +34,7 @@ void PrintResult::OutputText(const char* data, int length)
 }
 
 void PrintResult::HandleError(Error* e) {
-    if (IgnoreError(e)) {
+    if (IgnoreError(*e)) {
         StrBuf str;
 	    e->Fmt(&str);
         char* text = str.Text();

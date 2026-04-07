@@ -53,10 +53,10 @@ void STDHelpers::StripSurrounding(std::string& source, const char c)
 	{
 		start++;
 	}
-	while (end - 1 > start && source[end - 1] == c)
-	{
-		end--;
-	}
+    while (end > start && source[end - 1] == c)
+    {
+        end--;
+    }
 	if (end < size)
 	{
 		source.erase(end, size - end);
