@@ -27,6 +27,8 @@ bool FileMap::IsInLeft(const std::string fileRevision) const
 	argMap.Insert(StrBuf(fileRevision.c_str()), MapType::MapInclude);
 
 	// MapAPI is poorly written and doesn't declare things as const when it should.
+	// MapApi::Join mutates internal state (Disambiguate), so we must serialize concurrent calls.
+	std::lock_guard<std::mutex> lock(m_mutex);
 	std::unique_ptr<MapApi> joinResult(MapApi::Join(const_cast<MapApi*>(&m_map), &argMap));
 	return joinResult != nullptr;
 }
@@ -37,6 +39,7 @@ bool FileMap::IsInRight(const std::string fileRevision) const
 	StrBuf from(fileRevision.c_str());
 
 	// MapAPI is poorly written and doesn't declare things as const when it should.
+	std::lock_guard<std::mutex> lock(m_mutex);
 	MapApi* ref = const_cast<MapApi*>(&m_map);
 	return ref->Translate(from, to);
 }
@@ -53,6 +56,7 @@ std::string FileMap::TranslateLeftToRight(const std::string& path) const
 	StrBuf to;
 
 	// MapAPI is poorly written and doesn't declare things as const when it should.
+	std::lock_guard<std::mutex> lock(m_mutex);
 	MapApi* ref = const_cast<MapApi*>(&m_map);
 	if (ref->Translate(from, to, MapDir::MapLeftRight))
 	{
@@ -67,6 +71,7 @@ std::string FileMap::TranslateRightToLeft(const std::string& path) const
 	StrBuf to;
 
 	// MapAPI is poorly written and doesn't declare things as const when it should.
+	std::lock_guard<std::mutex> lock(m_mutex);
 	MapApi* ref = const_cast<MapApi*>(&m_map);
 	if (ref->Translate(from, to, MapDir::MapRightLeft))
 	{
@@ -179,6 +184,7 @@ void FileMap::InsertPrefixedPaths(const std::string prefix, const std::vector<st
 void FileMap::copyMapApiInto(MapApi& map) const
 {
 	// MapAPI is poorly written and doesn't declare things as const when it should.
+	std::lock_guard<std::mutex> lock(m_mutex);
 	MapApi* ref = const_cast<MapApi*>(&m_map);
 
 	map.Clear();

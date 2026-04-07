@@ -9,6 +9,7 @@
 
 #include <vector>
 #include <string>
+#include <mutex>
 
 #include "common.h"
 
@@ -17,6 +18,7 @@ struct FileMap
 private:
 	MapApi m_map;
 	MapCase m_sensitivity;
+	mutable std::mutex m_mutex;
 
 	void insertMapping(const std::string& left, const std::string& right, const MapType mapType);
 	void copyMapApiInto(MapApi& map) const;
