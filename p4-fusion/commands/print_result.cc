@@ -18,7 +18,8 @@ namespace {
 bool IgnoreError(const Error& e) {
     return e.CheckIds(MsgLbr::LbrOpenFail) ||
            e.CheckIds(MsgSupp::MagicHeader) ||
-           e.CheckIds(MsgSupp::Inflate);
+           e.CheckIds(MsgSupp::Inflate) ||
+           e.CheckIds(MsgDm::NoArchive);
 }
 }
 
